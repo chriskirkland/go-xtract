@@ -23,7 +23,6 @@ const parserMode = parser.Mode(0) // default parsing
 
 var fileSet = token.NewFileSet()
 
-
 // NewJSONEncoder json encoder with two-space indentation and no HTML escape characters
 func NewJSONEncoder(w io.Writer) *json.Encoder {
 	encoder := json.NewEncoder(w)

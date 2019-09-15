@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/chriskirkland/go-xtract/pkg/util"
 	"html/template"
 	"io"
 	"log"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/chriskirkland/go-xtract/pkg/extractor"
+	"github.com/chriskirkland/go-xtract/pkg/util"
 )
 
 const stdoutSentinel = "<stdout>"
@@ -18,8 +18,8 @@ var (
 	targetFunc = flag.String("func", "fmt.Sprintf", "taget func")
 	//TODO(cmkirkla): fix character escaping in default template
 	outputTemplate = flag.String("template", "{{range .Strings}}{{print .}}\n{{end}}", "output template")
-	outputFile    = flag.String("o", stdoutSentinel, "output file")
-	debug         = flag.Bool("v", false, "enable debug output")
+	outputFile     = flag.String("o", stdoutSentinel, "output file")
+	debug          = flag.Bool("v", false, "enable debug output")
 )
 
 func main() {

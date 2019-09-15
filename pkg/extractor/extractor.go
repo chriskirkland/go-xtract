@@ -1,8 +1,6 @@
 package extractor
 
 import (
-	"github.com/chriskirkland/go-xtract/pkg/util"
-	"github.com/pkg/errors"
 	"go/ast"
 	"go/token"
 	"io/ioutil"
@@ -11,12 +9,15 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/chriskirkland/go-xtract/pkg/util"
+	"github.com/pkg/errors"
 )
 
 /* TODO(cmkirkla
-	- replace GOPATH references for go mod (support both?)
-	- cleanup and 'segregate' imports. maybe allow users to filter which debug information gets printed via CLI flag?
- */
+- replace GOPATH references for go mod (support both?)
+- cleanup and 'segregate' imports. maybe allow users to filter which debug information gets printed via CLI flag?
+*/
 
 // Extractor responsible for extracting strings from Go files
 type Extractor interface {
