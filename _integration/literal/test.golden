@@ -1,0 +1,4 @@
+cmd: 'xtract -func fmt.Println src/*.go'
+output: |
+    vim-go
+    also works with runes
