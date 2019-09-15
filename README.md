@@ -1,4 +1,6 @@
 # go-xtract
+<a href="https://travis-ci.com/chriskirkland/go-xtract.svg?branch=master" alt="build status">
+  <img src="https://travis-ci.com/chriskirkland/go-xtract.svg?branch=master" /></a>
 
 Library for extracting arbitrary strings from Go code.
 
