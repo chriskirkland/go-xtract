@@ -66,9 +66,11 @@ func main() {
 	}
 
 	log.Println("writing extracted strings")
-	t.Execute(writer, struct {
+	if err := t.Execute(writer, struct {
 		Strings []string
 	}{
 		Strings: ext.Strings(),
-	})
+	}); err != nil {
+		log.Fatalf("failed to execute template: %s", err)
+	}
 }
