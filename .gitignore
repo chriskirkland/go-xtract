@@ -1,3 +1,4 @@
 .idea
 .*.swp
 .sandbox
+.DS_Store

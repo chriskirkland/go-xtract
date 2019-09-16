@@ -15,7 +15,6 @@ import (
 )
 
 /* TODO(cmkirkla
-- replace GOPATH references for go mod (support both?)
 - cleanup and 'segregate' imports. maybe allow users to filter which debug information gets printed via CLI flag?
 */
 
@@ -35,16 +34,11 @@ func New(targetFuncPackage, targetFuncName string) Extractor {
 	return t
 }
 
+// NewFromFunction create a new Extractor for the provided function object
 func NewFromFunction(targetFunc interface{}) Extractor {
 	t := newExtractor()
 	//TODO(cmkirkla): extract the package and function name from the provided symbol itself using reflection
 	return t
-}
-
-// NewDefault ...
-func NewDefault() Extractor {
-	// TODO(cmkirkla): is there a way to make this default? go-i18n.Tfunc is an interface and there are no concrete exported defaults.
-	return newExtractor()
 }
 
 func newExtractor() *extractor {
@@ -73,103 +67,122 @@ type extractor struct {
 }
 
 // Visit visit a node in the go file's AST
-func (r *extractor) Visit(n ast.Node) ast.Visitor {
-	switch n.(type) {
+func (r *extractor) Visit(node ast.Node) ast.Visitor {
+	switch node.(type) {
 	case *ast.CallExpr: // function call
-		call, _ := n.(*ast.CallExpr)
-		function, _ := call.Fun.(*ast.SelectorExpr)
+		call := node.(*ast.CallExpr)
+		function, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			break // wrong type
+		}
 		if function == nil {
-			//log.Println("skipping nil function at node")
-			break
+			break // nil function pkg.name. should never happen.
 		}
 
-		pkg, _ := function.X.(*ast.Ident)
+		pkg, ok := function.X.(*ast.Ident)
+		if !ok {
+			break // wrong type
+		}
 		if pkg == nil {
-			// function defined in the same package
-			break
+			break // function defined in the same package
 		}
 		pkgName := pkg.Name
 		funcName := function.Sel.Name
-		//log.Printf("found function '(%s) %s.%s'\n", r.imports[pkgName], pkgName, tfName)
 
 		var err error
-		if funcName == r.tfName && r.imports[pkgName] == r.tfPackage {
-			if len(call.Args) == 0 {
-				log.Printf("skipping niladic call to target function")
-				break //skip
-			}
+		if funcName != r.tfName || r.imports[pkgName] != r.tfPackage {
+			break // wrong function
+		}
 
-			key := call.Args[0]
-			log.Printf("string key: (%T) %+v", key, key)
+		if len(call.Args) == 0 {
+			log.Printf("skipping niladic call to target function")
+			break //skip
+		}
 
-			var value string
-			switch key.(type) {
-			case *ast.BasicLit: // string literal
-				literal := key.(*ast.BasicLit)
-				if literal == nil {
-					break // skip
-				}
-				value = literal.Value
+		targetNode := call.Args[0]
+		log.Printf("string key: (%T) %+v", targetNode, targetNode)
 
-			case *ast.Ident: // constant/variable in the same package
-				ident := key.(*ast.Ident)
-				currentImportPath := strings.TrimPrefix(
-					filepath.Dir(r.currentFile),
-					filepath.Join(os.Getenv("GOPATH"), "src"),
-				)
-				symbol := ident.Name
+		var value string
+		switch targetNode.(type) {
+		case *ast.BasicLit:
+			value, ok = r.extractStringLiteral(targetNode)
+		case *ast.Ident:
+			value, ok = r.extractLocalConstVar(targetNode)
+		case *ast.SelectorExpr:
+			value, ok = r.extractImportedConstVar(targetNode)
+		}
+		if !ok {
+			break // failed to extract
+		}
 
-				var ok bool
-				value, ok = r.symbols[symbol]
-				if !ok {
-					// symbol not defiend in current file
-					value, err = r.resolveSymbol(currentImportPath, symbol)
-					if err != nil {
-						log.Printf("unable to resolve symbol %s: %s", symbol, err.Error())
-						break
-					}
-				}
-
-				log.Printf("successfully resolved %s.%s = %s", currentImportPath, symbol, value)
-
-			case *ast.SelectorExpr: // constant/variable in a different package
-				function, _ := key.(*ast.SelectorExpr)
-				if function == nil {
-					//log.Println("skipping nil function at node")
-					break
-				}
-
-				pkg, _ := function.X.(*ast.Ident)
-				if pkg == nil {
-					// function defined in the same package
-					break
-				}
-				pkgName := pkg.Name
-				symbol := function.Sel.Name
-
-				value, err = r.resolveSymbol(r.imports[pkgName], symbol)
-				if err != nil {
-					log.Printf("unable to resolve symbol %s: %s", symbol, err.Error())
-					break
-				}
-				log.Printf("successfully resolved %s.%s = %s", pkgName, symbol, value)
-			}
-
-			// unquote the string literal
-			value, err = strconv.Unquote(value)
-			if err != nil || value == "" {
-				break // skip
-			}
-
+		// unquote the string literal
+		value, err = strconv.Unquote(value)
+		if err == nil && value != "" {
 			if _, ok := r.strings[value]; !ok {
 				log.Printf("recorded new string: '%s'", value)
 				r.strings[value] = true
 			}
 		}
 
+		// stop traversing this branch of the tree
+		return nil
 	}
 
 	return r
+}
+
+func (r extractor) extractStringLiteral(node ast.Node) (value string, ok bool) {
+	literal := node.(*ast.BasicLit)
+	if literal == nil || literal.Kind != token.STRING {
+		return "", false
+	}
+	return literal.Value, true
+}
+
+func (r extractor) extractLocalConstVar(node ast.Node) (value string, ok bool) {
+	ident := node.(*ast.Ident)
+	symbol := ident.Name
+
+	value, ok = r.symbols[symbol]
+	if ok {
+		return value, true
+	}
+
+	// symbol not defined in current file. need to scan other files in the package.
+	currentImportPath := strings.TrimPrefix(
+		filepath.Dir(r.currentFile),
+		filepath.Join(os.Getenv("GOPATH"), "src"),
+	)
+	value, err := r.resolveSymbol(currentImportPath, symbol)
+	if err != nil {
+		log.Printf("unable to resolve symbol %s: %s", symbol, err.Error())
+		return "", false
+	}
+	log.Printf("successfully resolved local symbol %s.%s = %s", currentImportPath, symbol, value)
+	return value, true
+}
+
+func (r extractor) extractImportedConstVar(node ast.Node) (value string, ok bool) {
+	function := node.(*ast.SelectorExpr)
+	if function == nil {
+		return "", false
+	}
+
+	pkg, _ := function.X.(*ast.Ident)
+	if pkg == nil {
+		// exported function should have non-nil package name. parser should have handled this.
+		return "", false
+	}
+	pkgName := pkg.Name
+	symbol := function.Sel.Name
+
+	value, err := r.resolveSymbol(r.imports[pkgName], symbol)
+	if err != nil {
+		log.Printf("unable to resolve symbol %s.%s: %s", pkgName, symbol, err.Error())
+		return "", false
+	}
+	log.Printf("successfully resolved %s.%s = %s", pkgName, symbol, value)
+	return value, true
 }
 
 // Load loads import, const, and variable declarations from the provide go file AST
