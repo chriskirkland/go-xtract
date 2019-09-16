@@ -1,0 +1,5 @@
+cmd: 'xtract -func fmt.Println src/*.go'
+output: |
+    this is a constant
+    this is another constant
+    variables work too

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -84,8 +85,14 @@ func (r *testRunner) runCommand() string {
 	return output.String()
 }
 
-func (r *testRunner) verifyOutput(actual string) {
-	assert.Equal(r.t, r.testSpec.Output, actual)
+func (r *testRunner) verifyOutput(output string) {
+	expected := strings.Split(r.testSpec.Output, "\n")
+	actual := strings.Split(output, "\n")
+
+	sort.Strings(expected)
+	sort.Strings(actual)
+
+	assert.Equal(r.t, expected, actual)
 }
 
 
