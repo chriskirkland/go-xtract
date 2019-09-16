@@ -1,0 +1,3 @@
+cmd: 'xtract -func fmt.Println src/*.go'
+output: |
+    first value another value

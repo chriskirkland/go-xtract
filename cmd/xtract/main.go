@@ -29,12 +29,14 @@ func main() {
 		log.SetOutput(os.Stdout)
 	}
 
+	// function to target for string extraction
 	tf := strings.Split(*targetFunc, ".")
 	if len(tf) != 2 {
 		log.Fatalf("'-func' must be a valid qualified function name but found '%s'", *targetFunc)
 	}
 	tfPackage, tfName := tf[0], tf[1]
 
+	// files to mine
 	if flag.NArg() == 0 {
 		log.Fatalf("one or more file patterns must be provided")
 	}
@@ -45,9 +47,11 @@ func main() {
 		log.Fatalf("error resolving one more provide file pattern: %s", err.Error())
 	}
 
+	// extract strings from files
 	ext := extractor.New(tfPackage, tfName)
 	extractor.ProcessFiles(ext, files...)
 
+	// output to user
 	var writer io.Writer = os.Stdout
 	if *outputFile != stdoutSentinel {
 		f, err := os.Open(*outputFile)
