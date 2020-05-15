@@ -1,0 +1,3 @@
+cmd: 'xtract -func github.com/chriskirkland/go-xtract/_integration/nestedpkgfn/src/pkg.Fn src/*.go'
+output: |
+    string passed to function in nested pkg

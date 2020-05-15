@@ -29,11 +29,13 @@ func main() {
 		log.SetOutput(os.Stdout)
 	}
 
-	tf := strings.Split(*targetFunc, ".")
-	if len(tf) != 2 {
+	dot := strings.LastIndex(*targetFunc, ".")
+	slash := strings.LastIndexByte(*targetFunc, os.PathSeparator)
+	if dot < 0 || slash > dot {
+		log.Println("'-func' allowed values: 'pkg.Func' or 'path.to/some/pkg.Func'")
 		log.Fatalf("'-func' must be a valid qualified function name but found '%s'", *targetFunc)
 	}
-	tfPackage, tfName := tf[0], tf[1]
+	tfPackage, tfName := (*targetFunc)[:dot], (*targetFunc)[dot+1:]
 
 	if flag.NArg() == 0 {
 		log.Fatalf("one or more file patterns must be provided")

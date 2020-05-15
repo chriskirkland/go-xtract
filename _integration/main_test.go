@@ -16,7 +16,7 @@ import (
 
 type spec struct {
 	Command string `yaml:"cmd"`
-	Output string `yaml:"output"`
+	Output  string `yaml:"output"`
 }
 
 func TestE2E(t *testing.T) {
@@ -31,20 +31,20 @@ func TestE2E(t *testing.T) {
 }
 
 type testRunner struct {
-	t *testing.T
+	t        *testing.T
 	testName string
 	testSpec spec
 }
 
 func newRunner(t *testing.T, name string) *testRunner {
 	return &testRunner{
-		t: t,
+		t:        t,
 		testName: name,
 	}
 }
 
 func (r *testRunner) Run() {
-	r.t.Run(r.testName, func(t *testing.T){
+	r.t.Run(r.testName, func(t *testing.T) {
 		r.t = t
 
 		r.loadSpec()
@@ -56,7 +56,6 @@ func (r *testRunner) Run() {
 		r.verifyOutput(output)
 	})
 }
-
 
 func (r *testRunner) loadSpec() {
 	// read test spec
@@ -94,5 +93,3 @@ func (r *testRunner) verifyOutput(output string) {
 
 	assert.Equal(r.t, expected, actual)
 }
-
-
